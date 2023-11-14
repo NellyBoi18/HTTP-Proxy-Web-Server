@@ -254,7 +254,15 @@ int main(int argc, char **argv) {
     }
     print_settings();
 
-    serve_forever(&server_fd);
+    // Create listening threads
+    pthread_t threads[num_listener];
+    for (int i = 0; i < num_listener; i++) {
+        if (pthread_create(&threads[i], NULL, serve_forever(&server_fd), (void*)&listener_ports[i]) != 0) {
+            perror("Failed to create listener thread");
+        }
+    }
+
+    // serve_forever(&server_fd);
 
     return EXIT_SUCCESS;
 }
