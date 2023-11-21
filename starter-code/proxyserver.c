@@ -262,6 +262,26 @@ int main(int argc, char **argv) {
         }
     }
 
+    // Create worker threads
+    pthread_t worker_threads[num_workers];
+    for (int i = 0; i < num_workers; i++) {
+        if (pthread_create(&worker_threads[i], NULL, serve_request, NULL) != 0) {
+            perror("Failed to create worker thread");
+        }
+    }
+
+    // Wait for all threads to finish
+    for (int i = 0; i < num_listener; i++) {
+        if (pthread_join(threads[i], NULL) != 0) {
+            perror("Failed to join listener thread");
+        }
+    }
+    for (int i = 0; i < num_workers; i++) {
+        if (pthread_join(worker_threads[i], NULL) != 0) {
+            perror("Failed to join worker thread");
+        }
+    }
+
     // serve_forever(&server_fd);
 
     return EXIT_SUCCESS;
