@@ -69,7 +69,9 @@ def run_proxy(ports, nl, nw, server_host, server_port, q, test_home):
                        '-i', socket.gethostbyname(server_host),
                        '-p', str(server_port),
                        '-q', str(q)]
-    return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # (edited)
+    return subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stdout) # just use stdout for both printf and perror
 
 # Calls run_proxy and run_target functions (if no_target is not set)
 # Used when 'start.py' is called directly
