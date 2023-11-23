@@ -1,3 +1,4 @@
 /README.md
 /client_server_proxy.png
 *.o
+__pycache__/start.cpython-310.pyc
