@@ -41,6 +41,12 @@ struct http_request {
     char *delay;
 };
 
+struct client_request {
+    char *path;
+    int priority;
+    int delay;
+};
+
 /*
  * Functions for sending an HTTP response.
  */
@@ -174,13 +180,16 @@ char *http_get_response_message(int status_code) {
     }
 }
 
-void parse_client_request(int fd) {
+struct client_request *parse_client_request(int fd) {
+    struct client_request *request = malloc(sizeof(struct client_request));
+    if (!request) http_fatal_error("Malloc failed");
+
     char *read_buffer = malloc(LIBHTTP_REQUEST_MAX_SIZE + 1);
     if (!read_buffer) http_fatal_error("Malloc failed");
 
     int bytes_read = read(fd, read_buffer, LIBHTTP_REQUEST_MAX_SIZE);
     read_buffer[bytes_read] = '\0'; /* Always null-terminate. */
-    printf("read buffer %s\n\n", read_buffer);
+    // printf("read buffer %s\n\n", read_buffer);
 
     int delay = -1;
     int priority = -1;
@@ -222,13 +231,19 @@ void parse_client_request(int fd) {
         token = strtok(NULL, "\r\n");
     }
 
+    /*
     printf("\n\tParsed HTTP request:\n");
     printf("\tPath: '%s'\n", path);
     printf("\tPriority: '%d'\n", priority);
     printf("\tDelay: '%d'\n\n", delay);
+    */
+
+    request->path = path;
+    request->priority = priority;
+    request->delay = delay;
 
     free(read_buffer);
-    return;
+    return request;
 }
 
 

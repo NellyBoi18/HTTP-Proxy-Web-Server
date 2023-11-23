@@ -15,7 +15,9 @@
 #include <unistd.h>
 
 #include "proxyserver.h"
+#include "safequeue.h"
 
+priority_queue_t *global_priority_queue;
 
 /*
  * Constants
@@ -164,6 +166,15 @@ void serve_forever(int *server_fd) {
             continue;
         }
 
+        // Parse HTTP request
+        struct client_request *request = parse_client_request(client_fd);
+        if (!request) {
+            // Handle parsing error
+            printf("here");
+            close(client_fd);
+            continue;
+        }
+
         printf("Accepted connection from %s on port %d\n",
                inet_ntoa(client_address.sin_addr),
                client_address.sin_port);
@@ -177,6 +188,31 @@ void serve_forever(int *server_fd) {
 
     shutdown(*server_fd, SHUT_RDWR);
     close(*server_fd);
+}
+
+void handle_getjob_request(int client_fd, priority_queue_t *queue) {
+    pthread_mutex_lock(&queue->lock);
+
+    if (queue->size == 0) {
+        // Queue is empty, send an appropriate response
+        // send_error_response(client_fd, QUEUE_EMPTY, "Priority queue is empty");
+        pthread_mutex_unlock(&queue->lock);
+        return;
+    }
+
+    // Get the highest priority job from the queue without blocking
+    queue_item_t highest_priority_job = get_work(queue, 0); // 0 for non-blocking
+
+    // Send the job details back to the client
+    http_start_response(client_fd, OK);
+    http_send_header(client_fd, "Content-Type", "text/plain");
+    http_end_headers(client_fd);
+    http_send_string(client_fd, highest_priority_job.path);
+
+    pthread_mutex_unlock(&queue->lock);
+
+    // Clean up
+    free(highest_priority_job.path);
 }
 
 /*
@@ -254,35 +290,10 @@ int main(int argc, char **argv) {
     }
     print_settings();
 
-    // Create listening threads
-    pthread_t threads[num_listener];
-    for (int i = 0; i < num_listener; i++) {
-        if (pthread_create(&threads[i], NULL, serve_forever(&server_fd), (void*)&listener_ports[i]) != 0) {
-            perror("Failed to create listener thread");
-        }
-    }
+    // Create and initialize priority queue
+    global_priority_queue = create_queue(max_queue_size);
 
-    // Create worker threads
-    pthread_t worker_threads[num_workers];
-    for (int i = 0; i < num_workers; i++) {
-        if (pthread_create(&worker_threads[i], NULL, serve_request, NULL) != 0) {
-            perror("Failed to create worker thread");
-        }
-    }
-
-    // Wait for all threads to finish
-    for (int i = 0; i < num_listener; i++) {
-        if (pthread_join(threads[i], NULL) != 0) {
-            perror("Failed to join listener thread");
-        }
-    }
-    for (int i = 0; i < num_workers; i++) {
-        if (pthread_join(worker_threads[i], NULL) != 0) {
-            perror("Failed to join worker thread");
-        }
-    }
-
-    // serve_forever(&server_fd);
+    serve_forever(&server_fd);
 
     return EXIT_SUCCESS;
 }

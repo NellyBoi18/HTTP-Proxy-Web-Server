@@ -1,12 +1,15 @@
-#include "safequeue.h"
 #include <stdlib.h>
 #include <pthread.h>
+#include "safequeue.h"
+// #include "proxyserver.h"
 
+/*
 typedef struct {
     // Structure to hold request data
     int client_fd; // Client file descriptor
     char *path;    // Request path
     int priority;  // Priority based on path or other criteria
+    int delay;     // Delay in seconds before processing the request
 } queue_item_t;
 
 typedef struct {
@@ -16,6 +19,7 @@ typedef struct {
     pthread_mutex_t lock;           // Mutex for thread synchronization
     pthread_cond_t not_empty_cond;  // Condition variable for blocking get
 } priority_queue_t;
+*/
 
 priority_queue_t *create_queue(int capacity) {
     priority_queue_t *queue = malloc(sizeof(priority_queue_t));
@@ -44,7 +48,7 @@ void swap(queue_item_t *a, queue_item_t *b) {
 // Heapify up for maintaining the heap property after insertion
 void heapify_up(priority_queue_t *queue, int index) {
     int parent_index = (index - 1) / 2;
-    if (index && queue->items[parent_index].priority < queue->items[index].priority) {
+    if (index && queue->items[parent_index].priority > queue->items[index].priority) {
         swap(&queue->items[index], &queue->items[parent_index]);
         heapify_up(queue, parent_index);
     }
@@ -54,18 +58,18 @@ void heapify_up(priority_queue_t *queue, int index) {
 void heapify_down(priority_queue_t *queue, int index) {
     int left = 2 * index + 1;
     int right = 2 * index + 2;
-    int largest = index;
+    int smallest = index;
 
-    if (left < queue->size && queue->items[left].priority > queue->items[largest].priority) {
-        largest = left;
+    if (left < queue->size && queue->items[left].priority < queue->items[smallest].priority) {
+        smallest = left;
     }
-    if (right < queue->size && queue->items[right].priority > queue->items[largest].priority) {
-        largest = right;
+    if (right < queue->size && queue->items[right].priority < queue->items[smallest].priority) {
+        smallest = right;
     }
 
-    if (largest != index) {
-        swap(&queue->items[index], &queue->items[largest]);
-        heapify_down(queue, largest);
+    if (smallest != index) {
+        swap(&queue->items[index], &queue->items[smallest]);
+        heapify_down(queue, smallest);
     }
 }
 
